@@ -1,0 +1,289 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+}
+
+:root {
+  /* Brand Theme Colors */
+  --gold-300: rgb(255, 145, 248);
+  --gold-400: rgb(255, 95, 245);
+  --gold-500: rgb(255, 45, 241);
+  --gold-600: rgb(200, 30, 190);
+  --gold-700: rgb(150, 20, 140);
+
+  --radius: 0.5rem;
+  --primary: var(--gold-500);
+  --primary-foreground: oklch(4.5% 0.002 240);
+  --background: oklch(4.5% 0.002 240);
+  --foreground: oklch(96% 0.008 80);
+  --card: oklch(7% 0.003 240);
+  --card-foreground: oklch(96% 0.008 80);
+  --popover: oklch(12% 0.004 240);
+  --popover-foreground: oklch(96% 0.008 80);
+  --secondary: oklch(12% 0.004 240);
+  --secondary-foreground: oklch(90% 0.01 80);
+  --muted: oklch(12% 0.004 240);
+  --muted-foreground: oklch(55% 0.01 240);
+  --accent: var(--gold-500);
+  --accent-foreground: oklch(4.5% 0.002 240);
+  --destructive: oklch(55% 0.22 25);
+  --destructive-foreground: oklch(98% 0 0);
+  --border: oklch(18% 0.006 240);
+  --input: oklch(15% 0.005 240);
+  --ring: var(--gold-500);
+  --chart-1: var(--gold-500);
+  --chart-2: oklch(65% 0.18 200);
+  --chart-3: oklch(65% 0.18 150);
+  --chart-4: oklch(65% 0.18 300);
+  --chart-5: oklch(65% 0.18 30);
+  --sidebar: oklch(7% 0.003 240);
+  --sidebar-foreground: oklch(96% 0.008 80);
+  --sidebar-primary: var(--gold-500);
+  --sidebar-primary-foreground: oklch(4.5% 0.002 240);
+  --sidebar-accent: oklch(12% 0.004 240);
+  --sidebar-accent-foreground: oklch(90% 0.01 80);
+  --sidebar-border: oklch(18% 0.006 240);
+  --sidebar-ring: var(--gold-500);
+}
+
+/* Dark mode inherits the same dark theme (already dark by default) */
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+    box-sizing: border-box;
+  }
+
+  html {
+    scroll-behavior: smooth;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: 'Inter', system-ui, sans-serif;
+    line-height: 1.7;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-family: 'Playfair Display', Georgia, serif;
+    line-height: 1.2;
+    letter-spacing: -0.01em;
+  }
+
+  ::selection {
+    background-color: color-mix(in srgb, var(--gold-500) 30%, transparent);
+    color: oklch(96% 0.008 80);
+  }
+
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: oklch(7% 0.003 240);
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: oklch(26% 0.008 240);
+    border-radius: 3px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: oklch(48% 0.13 70);
+  }
+
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  [type="button"]:not(:disabled),
+  [type="submit"]:not(:disabled),
+  [type="reset"]:not(:disabled),
+  a[href],
+  select:not(:disabled),
+  input[type="checkbox"]:not(:disabled),
+  input[type="radio"]:not(:disabled) {
+    @apply cursor-pointer;
+  }
+}
+
+@layer components {
+  .container {
+    width: 100%;
+    margin-left: auto;
+    margin-right: auto;
+    padding-left: 1.25rem;
+    padding-right: 1.25rem;
+  }
+
+  .flex {
+    min-height: 0;
+    min-width: 0;
+  }
+
+  @media (min-width: 640px) {
+    .container {
+      padding-left: 2rem;
+      padding-right: 2rem;
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .container {
+      padding-left: 3rem;
+      padding-right: 3rem;
+      max-width: 1280px;
+    }
+  }
+
+  /* Brand utilities */
+  .text-gold {
+    color: var(--gold-500);
+  }
+
+  .text-gold-light {
+    color: var(--gold-300);
+  }
+
+  .bg-gold {
+    background-color: var(--gold-500);
+  }
+
+  .border-gold {
+    border-color: var(--gold-500);
+  }
+
+  .text-gradient-gold {
+    background: linear-gradient(135deg, var(--gold-300), var(--gold-500), var(--gold-700));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .glass {
+    background: oklch(12% 0.004 240 / 0.75);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid oklch(30% 0.008 240 / 0.5);
+  }
+
+  .gold-glow {
+    box-shadow: 0 0 30px color-mix(in srgb, var(--gold-500) 25%, transparent);
+  }
+
+  .card-hover {
+    transition: transform 0.25s cubic-bezier(0.23, 1, 0.32, 1), box-shadow 0.25s cubic-bezier(0.23, 1, 0.32, 1);
+  }
+
+  .card-hover:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 0 30px color-mix(in srgb, var(--gold-500) 25%, transparent);
+  }
+
+  .section-padding {
+    padding-top: 5rem;
+    padding-bottom: 5rem;
+  }
+
+  @media (min-width: 768px) {
+    .section-padding {
+      padding-top: 7rem;
+      padding-bottom: 7rem;
+    }
+  }
+
+  .divider-gold {
+    width: 60px;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--gold-500), transparent);
+    margin: 1rem auto;
+  }
+
+  .btn-gold {
+    background: linear-gradient(135deg, var(--gold-400), var(--gold-600));
+    color: oklch(4.5% 0.002 240);
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    transition: all 0.2s cubic-bezier(0.23, 1, 0.32, 1);
+  }
+
+  .btn-gold:hover {
+    background: linear-gradient(135deg, var(--gold-300), var(--gold-500));
+    box-shadow: 0 0 30px color-mix(in srgb, var(--gold-500) 25%, transparent);
+    transform: translateY(-1px);
+  }
+
+  .btn-gold:active {
+    transform: scale(0.97);
+  }
+
+  .font-display {
+    font-family: 'Playfair Display', Georgia, serif;
+  }
+
+  @keyframes fadeUp {
+    from {
+      opacity: 0;
+      transform: translateY(24px);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .animate-fade-up {
+    animation: fadeUp 0.6s cubic-bezier(0.23, 1, 0.32, 1) both;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .animate-fade-up {
+      animation: none;
+    }
+  }
+}
