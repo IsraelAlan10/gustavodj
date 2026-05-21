@@ -126,6 +126,7 @@ export const blogPosts = mysqlTable("blog_posts", {
   excerpt: text("excerpt"),
   content: text("content").notNull(),
   featuredImage: varchar("featuredImage", { length: 1000 }),
+  mediaUrl: varchar("mediaUrl", { length: 1000 }),
   images: json("images").$type<string[]>().default([]),
   tags: json("tags").$type<string[]>().default([]),
   published: boolean("published").default(false).notNull(),

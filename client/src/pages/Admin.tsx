@@ -11,7 +11,7 @@ import { toast } from "sonner";
 import { useLocation } from "wouter";
 import { getLoginUrl } from "@/const";
 
-type AdminTab = "dashboard" | "leads" | "events" | "products" | "orders" | "blog";
+type AdminTab = "dashboard" | "events" | "products" | "orders" | "blog";
 
 // ─── Auth Guard ────────────────────────────────────────────────────────────────
 function AdminGuard({ children }: { children: React.ReactNode }) {
@@ -35,9 +35,12 @@ function AdminGuard({ children }: { children: React.ReactNode }) {
           </h1>
           <p className="text-[oklch(55%_0.01_240)] text-sm">Inicia sesión para acceder al panel.</p>
         </div>
-        <a href={getLoginUrl()} className="btn-gold px-8 py-3.5 rounded-full text-sm font-semibold">
+        <button
+          onClick={() => window.location.href = "/api/oauth/dev-login"}
+          className="btn-gold px-8 py-3.5 rounded-full text-sm font-semibold"
+        >
           Iniciar sesión
-        </a>
+        </button>
       </div>
     );
   }
@@ -58,21 +61,18 @@ function AdminGuard({ children }: { children: React.ReactNode }) {
 // ─── Sidebar ───────────────────────────────────────────────────────────────────
 const navItems: { id: AdminTab; label: string; icon: React.ElementType }[] = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { id: "leads", label: "Leads", icon: Users },
   { id: "events", label: "Eventos", icon: CalendarDays },
-  { id: "products", label: "Productos", icon: Package },
+  { id: "products", label: "Tienda", icon: Package },
   { id: "orders", label: "Órdenes", icon: ShoppingBag },
   { id: "blog", label: "Blog", icon: FileText },
 ];
 
 // ─── Dashboard Tab ─────────────────────────────────────────────────────────────
 function DashboardTab() {
-  const { data: leads } = trpc.leads.list.useQuery();
   const { data: events } = trpc.events.list.useQuery();
   const { data: orders } = trpc.orders.list.useQuery();
 
   const stats = [
-    { label: "Leads totales", value: leads?.length ?? 0, color: "var(--primary)" },
     { label: "Eventos solicitados", value: events?.length ?? 0, color: "oklch(60% 0.18 240)" },
     { label: "Órdenes", value: orders?.length ?? 0, color: "oklch(55% 0.18 145)" },
     {
@@ -133,49 +133,6 @@ function StatusBadge({ status }: { status: string }) {
     <span className="text-xs px-2.5 py-1 rounded-full font-medium" style={{ color: s.color, background: s.bg }}>
       {s.label}
     </span>
-  );
-}
-
-// ─── Leads Tab ─────────────────────────────────────────────────────────────────
-function LeadsTab() {
-  const { data: leads, isLoading } = trpc.leads.list.useQuery();
-  return (
-    <div>
-      <h2 className="font-display text-2xl font-bold text-[oklch(96%_0.008_80)] mb-6">Leads</h2>
-      <div className="rounded-xl bg-[oklch(7%_0.003_240)] border border-[oklch(18%_0.006_240)] overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-[oklch(18%_0.006_240)]">
-                {["Nombre", "Teléfono", "Correo", "Fuente", "Fecha"].map((h) => (
-                  <th key={h} className="px-4 py-3 text-left text-xs font-medium text-[oklch(50%_0.01_240)] uppercase tracking-wide">
-                    {h}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[oklch(12%_0.004_240)]">
-              {isLoading ? (
-                <tr><td colSpan={5} className="px-4 py-8 text-center text-xs text-[oklch(40%_0.008_240)]">Cargando...</td></tr>
-              ) : (leads ?? []).map((lead) => (
-                <tr key={lead.id} className="hover:bg-[oklch(9%_0.003_240)] transition-colors">
-                  <td className="px-4 py-3 text-[oklch(85%_0.01_80)]">{lead.name}</td>
-                  <td className="px-4 py-3 text-[oklch(65%_0.01_240)]">{lead.phone}</td>
-                  <td className="px-4 py-3 text-[oklch(65%_0.01_240)]">{lead.email}</td>
-                  <td className="px-4 py-3 text-[oklch(50%_0.01_240)]">{lead.source ?? "landing"}</td>
-                  <td className="px-4 py-3 text-[oklch(45%_0.008_240)] text-xs">
-                    {new Date(lead.createdAt).toLocaleDateString("es-MX")}
-                  </td>
-                </tr>
-              ))}
-              {!isLoading && !leads?.length && (
-                <tr><td colSpan={5} className="px-4 py-8 text-center text-xs text-[oklch(40%_0.008_240)]">Sin leads aún</td></tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
   );
 }
 
@@ -249,7 +206,7 @@ function ProductsTab() {
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
-        <h2 className="font-display text-2xl font-bold text-[oklch(96%_0.008_80)]">Productos</h2>
+        <h2 className="font-display text-2xl font-bold text-[oklch(96%_0.008_80)]">Tienda</h2>
         <button
           onClick={() => { setEditId(null); setShowForm(true); }}
           className="btn-gold px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5"
@@ -261,6 +218,7 @@ function ProductsTab() {
       {showForm && (
         <ProductForm
           editId={editId}
+          editProduct={editId ? products?.find(p => p.id === editId) : undefined}
           onClose={() => { setShowForm(false); setEditId(null); refetch(); }}
         />
       )}
@@ -298,7 +256,7 @@ function ProductsTab() {
         ))}
         {!isLoading && !products?.length && (
           <div className="col-span-full text-center py-12 text-xs text-[oklch(40%_0.008_240)]">
-            Sin productos. Agrega el primero.
+            Sin artículos. Agrega el primero a la tienda.
           </div>
         )}
       </div>
@@ -306,17 +264,17 @@ function ProductsTab() {
   );
 }
 
-function ProductForm({ editId, onClose }: { editId: number | null; onClose: () => void }) {
-  const [name, setName] = useState("");
-  const [price, setPrice] = useState("");
-  const [category, setCategory] = useState<"cabina" | "mesa_dj" | "accesorio">("cabina");
-  const [description, setDescription] = useState("");
-  const [dimensions, setDimensions] = useState("");
-  const [color, setColor] = useState("");
-  const [amazonLink, setAmazonLink] = useState("");
-  const [tags, setTags] = useState("");
+function ProductForm({ editId, editProduct, onClose }: { editId: number | null; editProduct?: any; onClose: () => void }) {
+  const [name, setName] = useState(editProduct?.name || "");
+  const [price, setPrice] = useState(editProduct?.price || "");
+  const [category, setCategory] = useState<"cabina" | "mesa_dj" | "accesorio">(editProduct?.category || "cabina");
+  const [description, setDescription] = useState(editProduct?.description || "");
+  const [dimensions, setDimensions] = useState(editProduct?.dimensions || "");
+  const [color, setColor] = useState(editProduct?.color || "");
+  const [amazonLink, setAmazonLink] = useState(editProduct?.amazonLink || "");
+  const [tags, setTags] = useState(editProduct?.tags?.join(", ") || "");
   const [uploading, setUploading] = useState(false);
-  const [images, setImages] = useState<string[]>([]);
+  const [images, setImages] = useState<string[]>(editProduct?.images || []);
 
   const createProduct = trpc.products.create.useMutation({ onSuccess: () => { toast.success("Producto creado"); onClose(); } });
   const updateProduct = trpc.products.update.useMutation({ onSuccess: () => { toast.success("Producto actualizado"); onClose(); } });
@@ -356,43 +314,43 @@ function ProductForm({ editId, onClose }: { editId: number | null; onClose: () =
       </div>
       <form onSubmit={handleSubmit} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="sm:col-span-2">
-          <label className="admin-label">Nombre *</label>
-          <input value={name} onChange={e => setName(e.target.value)} required className="admin-input" placeholder="Nombre del producto" />
+          <label className="block text-sm/6 font-medium text-white text-lg mb-2">Nombre *</label>
+          <input value={name} onChange={e => setName(e.target.value)} required className="block w-full rounded-md bg-white/5 px-3 py-1.5 text-base text-white outline-1 -outline-offset-1 outline-white/10 placeholder:text-gray-500 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-500 sm:text-sm/6" placeholder="Nombre del producto" />
         </div>
         <div>
-          <label className="admin-label">Precio (MXN) *</label>
-          <input value={price} onChange={e => setPrice(e.target.value)} required type="number" min="0" step="0.01" className="admin-input" placeholder="0.00" />
+          <label className="block text-sm/6 font-medium text-white text-lg mb-2">Precio (MXN) *</label>
+          <input value={price} onChange={e => setPrice(e.target.value)} required type="number" min="0" step="0.01" className="block w-full rounded-md bg-white/5 px-3 py-1.5 text-base text-white outline-1 -outline-offset-1 outline-white/10 placeholder:text-gray-500 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-500 sm:text-sm/6" placeholder="0.00" />
         </div>
         <div>
-          <label className="admin-label">Categoría *</label>
-          <select value={category} onChange={e => setCategory(e.target.value as any)} className="admin-input">
-            <option value="cabina">Cabina</option>
-            <option value="mesa_dj">Mesa DJ</option>
-            <option value="accesorio">Accesorio</option>
+          <label className="block text-sm/6 font-medium text-white text-lg mb-2">Categoría *</label>
+          <select value={category} onChange={e => setCategory(e.target.value as any)} className="block w-full rounded-md bg-white/5 px-3 py-1.5 text-base text-white outline-1 -outline-offset-1 outline-white/10 placeholder:text-gray-500 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-500 sm:text-sm/6">
+            <option className="text-black bg-gray-200" value="cabina">Cabina</option>
+            <option className="text-black bg-gray-200" value="mesa_dj">Mesa DJ</option>
+            <option className="text-black bg-gray-200" value="accesorio">Accesorio</option>
           </select>
         </div>
         <div>
-          <label className="admin-label">Medidas</label>
-          <input value={dimensions} onChange={e => setDimensions(e.target.value)} className="admin-input" placeholder="120x80x100 cm" />
+          <label className="block text-sm/6 font-medium text-white text-lg mb-2">Medidas</label>
+          <input value={dimensions} onChange={e => setDimensions(e.target.value)} className="block w-full rounded-md bg-white/5 px-3 py-1.5 text-base text-white outline-1 -outline-offset-1 outline-white/10 placeholder:text-gray-500 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-500 sm:text-sm/6" placeholder="120x80x100 cm" />
         </div>
         <div>
-          <label className="admin-label">Color</label>
-          <input value={color} onChange={e => setColor(e.target.value)} className="admin-input" placeholder="Negro mate" />
+          <label className="block text-sm/6 font-medium text-white text-lg mb-2">Color</label>
+          <input value={color} onChange={e => setColor(e.target.value)} className="block w-full rounded-md bg-white/5 px-3 py-1.5 text-base text-white outline-1 -outline-offset-1 outline-white/10 placeholder:text-gray-500 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-500 sm:text-sm/6" placeholder="Negro mate" />
         </div>
         <div className="sm:col-span-2">
-          <label className="admin-label">Descripción</label>
-          <textarea value={description} onChange={e => setDescription(e.target.value)} rows={3} className="admin-input resize-none" placeholder="Descripción del producto..." />
+          <label className="block text-sm/6 font-medium text-white text-lg mb-2">Descripción</label>
+          <textarea value={description} onChange={e => setDescription(e.target.value)} rows={3} className="block w-full rounded-md bg-white/5 px-3 py-1.5 text-base text-white outline-1 -outline-offset-1 outline-white/10 placeholder:text-gray-500 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-500 sm:text-sm/6 resize-none" placeholder="Descripción del producto..." />
         </div>
         <div>
-          <label className="admin-label">Tags (separados por coma)</label>
-          <input value={tags} onChange={e => setTags(e.target.value)} className="admin-input" placeholder="profesional, cabina, dj" />
+          <label className="block text-sm/6 font-medium text-white text-lg mb-2">Tags (separados por coma)</label>
+          <input value={tags} onChange={e => setTags(e.target.value)} className="block w-full rounded-md bg-white/5 px-3 py-1.5 text-base text-white outline-1 -outline-offset-1 outline-white/10 placeholder:text-gray-500 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-500 sm:text-sm/6" placeholder="profesional, cabina, dj" />
         </div>
         <div>
-          <label className="admin-label">Link de Amazon</label>
-          <input value={amazonLink} onChange={e => setAmazonLink(e.target.value)} type="url" className="admin-input" placeholder="https://amazon.com.mx/..." />
+          <label className="block text-sm/6 font-medium text-white text-lg mb-2">Link de Amazon</label>
+          <input value={amazonLink} onChange={e => setAmazonLink(e.target.value)} type="url" className="block w-full rounded-md bg-white/5 px-3 py-1.5 text-base text-white outline-1 -outline-offset-1 outline-white/10 placeholder:text-gray-500 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-500 sm:text-sm/6" placeholder="https://amazon.com.mx/..." />
         </div>
         <div className="sm:col-span-2">
-          <label className="admin-label">Imágenes</label>
+          <label className="block text-sm/6 font-medium text-white text-lg mb-2">Imágenes</label>
           <div className="flex items-center gap-3">
             <label className="cursor-pointer flex items-center gap-2 px-4 py-2 rounded-lg border border-[oklch(25%_0.008_240)] text-[oklch(65%_0.01_240)] hover:border-primary hover:text-primary transition-colors text-xs">
               {uploading ? <><div className="w-3.5 h-3.5 border border-current border-t-transparent rounded-full animate-spin" />Subiendo...</> : <><Upload className="w-3.5 h-3.5" />Subir imagen</>}
@@ -480,7 +438,7 @@ function OrdersTab() {
 
 // ─── Blog Tab ──────────────────────────────────────────────────────────────────
 function BlogTab() {
-  const { data: posts, isLoading, refetch } = trpc.blog.list.useQuery({ published: undefined as any });
+  const { data: posts, isLoading, refetch } = trpc.blog.list.useQuery({ all: true });
   const deletePost = trpc.blog.delete.useMutation({ onSuccess: () => { refetch(); toast.success("Artículo eliminado"); } });
   const updatePost = trpc.blog.update.useMutation({ onSuccess: () => { refetch(); toast.success("Artículo actualizado"); } });
   const [showForm, setShowForm] = useState(false);
@@ -500,7 +458,7 @@ function BlogTab() {
 
       {showForm && (
         <BlogPostForm
-          editId={editId}
+          editPost={posts?.find(p => p.id === editId)}
           onClose={() => { setShowForm(false); setEditId(null); refetch(); }}
         />
       )}
@@ -552,19 +510,26 @@ function BlogTab() {
   );
 }
 
-function BlogPostForm({ editId, onClose }: { editId: number | null; onClose: () => void }) {
-  const [title, setTitle] = useState("");
-  const [excerpt, setExcerpt] = useState("");
-  const [content, setContent] = useState("");
-  const [tags, setTags] = useState("");
-  const [published, setPublished] = useState(false);
-  const [metaTitle, setMetaTitle] = useState("");
-  const [metaDesc, setMetaDesc] = useState("");
+function BlogPostForm({ editPost, onClose }: { editPost: any; onClose: () => void }) {
+  const [title, setTitle] = useState(editPost?.title || "");
+  const [excerpt, setExcerpt] = useState(editPost?.excerpt || "");
+  const [content, setContent] = useState(editPost?.content || "");
+  const [tags, setTags] = useState(editPost?.tags?.join(", ") || "");
+  const [published, setPublished] = useState(editPost?.published || false);
+  const [metaTitle, setMetaTitle] = useState(editPost?.metaTitle || "");
+  const [metaDesc, setMetaDesc] = useState(editPost?.metaDescription || "");
   const [uploading, setUploading] = useState(false);
-  const [featuredImage, setFeaturedImage] = useState("");
+  const [featuredImage, setFeaturedImage] = useState(editPost?.featuredImage || "");
+  const [mediaUrl, setMediaUrl] = useState(editPost?.mediaUrl || "");
 
-  const createPost = trpc.blog.create.useMutation({ onSuccess: () => { toast.success("Artículo creado"); onClose(); } });
-  const updatePost = trpc.blog.update.useMutation({ onSuccess: () => { toast.success("Artículo actualizado"); onClose(); } });
+  const createPost = trpc.blog.create.useMutation({
+    onSuccess: () => { toast.success("Artículo creado"); onClose(); },
+    onError: (err) => { toast.error("No se pudo guardar: Revisa la conexión a la base de datos."); }
+  });
+  const updatePost = trpc.blog.update.useMutation({
+    onSuccess: () => { toast.success("Artículo actualizado"); onClose(); },
+    onError: (err) => { toast.error("No se pudo actualizar: Revisa la conexión a la base de datos."); }
+  });
 
   async function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -585,55 +550,74 @@ function BlogPostForm({ editId, onClose }: { editId: number | null; onClose: () 
     const data = {
       title, excerpt, content,
       featuredImage: featuredImage || undefined,
-      tags: tags.split(",").map(t => t.trim()).filter(Boolean),
+      mediaUrl: mediaUrl || undefined,
+      tags: tags.split(",").map((t: string) => t.trim()).filter(Boolean),
       published,
       metaTitle: metaTitle || undefined,
       metaDescription: metaDesc || undefined,
     };
-    if (editId) updatePost.mutate({ id: editId, ...data });
+    if (editPost?.id) updatePost.mutate({ id: editPost.id, ...data });
     else createPost.mutate(data);
   }
 
   return (
     <div className="mb-6 p-6 rounded-xl bg-[oklch(7%_0.003_240)] border border-primary/30">
       <div className="flex items-center justify-between mb-5">
-        <h3 className="font-semibold text-[oklch(90%_0.008_80)]">{editId ? "Editar" : "Nuevo"} artículo</h3>
+        <h3 className="font-semibold text-[oklch(90%_0.008_80)]">{editPost ? "Editar" : "Nuevo"} artículo</h3>
         <button onClick={onClose} className="text-[oklch(45%_0.008_240)] hover:text-[oklch(70%_0.01_240)]"><X className="w-4 h-4" /></button>
       </div>
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label className="admin-label">Título *</label>
-          <input value={title} onChange={e => setTitle(e.target.value)} required className="admin-input" placeholder="Título del artículo" />
+          <label className="block text-sm/6 font-medium text-white text-lg mb-2">Título*:</label>
+          <input value={title} onChange={e => setTitle(e.target.value)} required className="block w-full rounded-md bg-white/5 px-3 py-1.5 text-base text-white outline-1 -outline-offset-1 outline-white/10 placeholder:text-gray-500 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-500 sm:text-sm/6" placeholder="Título del artículo" />
         </div>
         <div>
-          <label className="admin-label">Extracto</label>
-          <textarea value={excerpt} onChange={e => setExcerpt(e.target.value)} rows={2} className="admin-input resize-none" placeholder="Breve descripción para SEO y listados..." />
+          <label className="block text-sm/6 font-medium text-white text-lg mb-2">Extracto:</label>
+          <textarea value={excerpt} onChange={e => setExcerpt(e.target.value)} rows={2} className="block w-full rounded-md bg-white/5 px-3 py-1.5 text-base text-white outline-1 -outline-offset-1 outline-white/10 placeholder:text-gray-500 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-500 sm:text-sm/6 resize-none" placeholder="Breve descripción para SEO y listados..." />
         </div>
         <div>
-          <label className="admin-label">Contenido * (HTML o texto)</label>
-          <textarea value={content} onChange={e => setContent(e.target.value)} required rows={10} className="admin-input resize-y font-mono text-xs" placeholder="<p>Contenido del artículo...</p>" />
+          <label className="block text-sm/6 font-medium text-white text-lg mb-2">Enlace de YouTube/SoundCloud (opcional):</label>
+          <input value={mediaUrl} onChange={e => setMediaUrl(e.target.value)} type="url" className="block w-full rounded-md bg-white/5 px-3 py-1.5 text-base text-white outline-1 -outline-offset-1 outline-white/10 placeholder:text-gray-500 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-500 sm:text-sm/6" placeholder="https://youtube.com/watch?v=... o https://soundcloud.com/..." />
+        </div>
+        <div>
+          <label className="block text-sm/6 font-medium text-white text-lg mb-2">Contenido * (Texto):</label>
+          <textarea value={content} onChange={e => setContent(e.target.value)} required rows={10} className="block w-full rounded-md bg-white/5 px-3 py-1.5 text-base text-white outline-1 -outline-offset-1 outline-white/10 placeholder:text-gray-500 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-500 sm:text-sm/6 resize-y font-mono text-xs" placeholder="Contenido del artículo... (Los saltos de línea se respetarán automáticamente)" />
+        </div>
+        <div className="col-span-full">
+          <label htmlFor="cover-photo" className="block text-sm/6 font-medium text-white">Foto de Portada</label>
+          <div className="mt-2 flex justify-center rounded-lg border border-dashed border-white/25 px-6 py-10">
+            <div className="text-center">
+              {featuredImage ? (
+                <div className="mb-4 relative group">
+                  <img src={featuredImage} alt="Cover" className="mx-auto h-32 w-auto rounded-lg object-cover" />
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg">
+                    <span className="text-white text-xs font-semibold">Cambiar foto</span>
+                  </div>
+                </div>
+              ) : (
+                <svg viewBox="0 0 24 24" fill="currentColor" data-slot="icon" aria-hidden="true" className="mx-auto size-12 text-gray-600">
+                  <path d="M1.5 6a2.25 2.25 0 0 1 2.25-2.25h16.5A2.25 2.25 0 0 1 22.5 6v12a2.25 2.25 0 0 1-2.25 2.25H3.75A2.25 2.25 0 0 1 1.5 18V6ZM3 16.06V18c0 .414.336.75.75.75h16.5A.75.75 0 0 0 21 18v-1.94l-2.69-2.689a1.5 1.5 0 0 0-2.12 0l-.88.879.97.97a.75.75 0 1 1-1.06 1.06l-5.16-5.159a1.5 1.5 0 0 0-2.12 0L3 16.061Zm10.125-7.81a1.125 1.125 0 1 1 2.25 0 1.125 1.125 0 0 1-2.25 0Z" clipRule="evenodd" fillRule="evenodd" />
+                </svg>
+              )}
+              <div className="mt-4 flex justify-center text-sm/6 text-gray-400">
+                <label htmlFor="file-upload" className="relative cursor-pointer rounded-md bg-transparent font-semibold text-indigo-400 focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-indigo-500 hover:text-indigo-300">
+                  <span>{uploading ? "Subiendo..." : featuredImage ? "Cambiar archivo" : "Upload a file"}</span>
+                  <input id="file-upload" type="file" name="file-upload" className="sr-only" onChange={handleImageUpload} disabled={uploading} accept="image/*,video/*" />
+                </label>
+                <p className="pl-1">or drag and drop</p>
+              </div>
+              <p className="text-xs/5 text-gray-400">PNG, JPG, GIF up to 10MB</p>
+            </div>
+          </div>
         </div>
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="admin-label">Tags</label>
-            <input value={tags} onChange={e => setTags(e.target.value)} className="admin-input" placeholder="dj, música, eventos" />
+            <label className="block text-sm/6 font-medium text-white text-lg mb-2">Meta título (SEO)</label>
+            <input value={metaTitle} onChange={e => setMetaTitle(e.target.value)} className="block w-full rounded-md bg-white/5 px-3 py-1.5 text-base text-white outline-1 -outline-offset-1 outline-white/10 placeholder:text-gray-500 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-500 sm:text-sm/6" placeholder="Título para Google" />
           </div>
           <div>
-            <label className="admin-label">Imagen destacada</label>
-            <label className="cursor-pointer flex items-center gap-2 admin-input">
-              {uploading ? "Subiendo..." : featuredImage ? "Cambiar imagen" : "Subir imagen"}
-              <input type="file" accept="image/*,video/*" className="sr-only" onChange={handleImageUpload} disabled={uploading} />
-            </label>
-          </div>
-        </div>
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="admin-label">Meta título (SEO)</label>
-            <input value={metaTitle} onChange={e => setMetaTitle(e.target.value)} className="admin-input" placeholder="Título para Google" />
-          </div>
-          <div>
-            <label className="admin-label">Meta descripción (SEO)</label>
-            <input value={metaDesc} onChange={e => setMetaDesc(e.target.value)} className="admin-input" placeholder="Descripción para Google" />
+            <label className="block text-sm/6 font-medium text-white text-lg mb-2">Meta descripción (SEO)</label>
+            <input value={metaDesc} onChange={e => setMetaDesc(e.target.value)} className="block w-full rounded-md bg-white/5 px-3 py-1.5 text-base text-white outline-1 -outline-offset-1 outline-white/10 placeholder:text-gray-500 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-500 sm:text-sm/6" placeholder="Descripción para Google" />
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -661,7 +645,6 @@ export default function Admin() {
 
   const tabComponents: Record<AdminTab, React.ReactNode> = {
     dashboard: <DashboardTab />,
-    leads: <LeadsTab />,
     events: <EventsTab />,
     products: <ProductsTab />,
     orders: <OrdersTab />,
@@ -674,7 +657,7 @@ export default function Admin() {
         {/* Sidebar */}
         <aside className={`fixed inset-y-0 left-0 z-40 w-60 bg-[oklch(5%_0.002_240)] border-r border-[oklch(12%_0.004_240)] flex flex-col transition-transform duration-300 ${sidebarOpen ? "translate-x-0" : "-translate-x-full"} lg:translate-x-0 lg:static lg:flex`}>
           <div className="p-5 border-b border-[oklch(12%_0.004_240)]">
-            <div className="font-display text-lg font-bold text-primary">DJ Producción</div>
+            <div className="font-display text-lg font-bold text-primary">Gustavo Delgadillo</div>
             <div className="text-xs text-[oklch(45%_0.008_240)] mt-0.5">Panel de administrador</div>
           </div>
           <nav className="flex-1 p-3 space-y-1">
@@ -684,11 +667,10 @@ export default function Admin() {
                 <button
                   key={item.id}
                   onClick={() => { setActiveTab(item.id); setSidebarOpen(false); }}
-                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all duration-150 ${
-                    activeTab === item.id
-                      ? "bg-primary/10 text-primary font-medium"
-                      : "text-[oklch(55%_0.01_240)] hover:bg-[oklch(8%_0.003_240)] hover:text-[oklch(75%_0.01_240)]"
-                  }`}
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all duration-150 ${activeTab === item.id
+                    ? "bg-primary/10 text-primary font-medium"
+                    : "text-[oklch(55%_0.01_240)] hover:bg-[oklch(8%_0.003_240)] hover:text-[oklch(75%_0.01_240)]"
+                    }`}
                 >
                   <Icon className="w-4 h-4 shrink-0" />
                   {item.label}

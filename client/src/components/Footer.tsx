@@ -11,15 +11,19 @@ export default function Footer() {
           {/* Brand */}
           <div className="lg:col-span-2">
             <div className="flex items-center gap-2.5 mb-4">
-              <div className="w-9 h-9 rounded-full bg-gradient-to-br from-[oklch(73%_0.16_78)] to-[oklch(48%_0.13_70)] flex items-center justify-center">
-                <Music2 className="w-5 h-5 text-[oklch(4.5%_0.002_240)]" />
+              <div className="w-9 h-9 rounded-full flex items-center justify-center">
+                <img
+                  src="/logo2.png"
+                  alt="Gustavo Delgadillo Logo"
+                  className="w-20 h-25 object-contain"
+                />
               </div>
               <span className="font-display font-bold text-lg text-[oklch(96%_0.008_80)]">
-                DJ Producción <span className="text-primary">CDMX</span>
+                Gustavo Delgadillo <span className="text-primary">DJ y Cabinas</span>
               </span>
             </div>
             <p className="text-[oklch(55%_0.01_240)] text-sm leading-relaxed max-w-xs">
-              Servicio profesional de DJ, producción musical e iluminación para eventos en la Ciudad de México. Hacemos que tu evento sea inolvidable.
+              Servicio profesional de DJ, producción musical e iluminación para eventos en la Ciudad de México y el Interior de la República Mexicana. Hacemos que tu evento sea inolvidable.
             </p>
             <div className="flex gap-3 mt-6">
               <a
@@ -98,11 +102,6 @@ export default function Footer() {
           <p className="text-xs text-[oklch(40%_0.008_240)]">
             © {year} DJ Producción CDMX. Todos los derechos reservados.
           </p>
-          <div className="flex gap-4 text-xs text-[oklch(40%_0.008_240)]">
-            <Link href="/admin" className="hover:text-primary transition-colors">
-              Admin
-            </Link>
-          </div>
         </div>
       </div>
     </footer>

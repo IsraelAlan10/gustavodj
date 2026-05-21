@@ -4,19 +4,20 @@ import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
-import { getDb } from "./db";
-import {
-  leads,
-  eventBookings,
-  products,
-  orders,
-  blogPosts,
-  blockedDates,
-} from "../drizzle/schema";
-import { eq, desc, and, like, inArray } from "drizzle-orm";
+import { getDb, getDbMode } from "./db";
+import * as mysqlSchema from "../drizzle/schema";
+import * as sqliteSchema from "../drizzle/sqlite-schema";
+import { eq, desc, and, sql } from "drizzle-orm";
 import { notifyOwner } from "./_core/notification";
 import slugify from "slugify";
 
+// ─── Schema helper ────────────────────────────────────────────────────────────
+// Returns the correct table references depending on the DB mode
+function getSchema() {
+  const mode = getDbMode();
+  if (mode === "sqlite") return sqliteSchema;
+  return mysqlSchema;
+}
 
 // ─── Sanitize helpers ─────────────────────────────────────────────────────────
 function sanitizeText(input: string): string {
@@ -52,26 +53,28 @@ const leadsRouter = router({
     )
     .mutation(async ({ input }) => {
       const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const s = getSchema();
       const sanitized = {
         name: sanitizeText(input.name),
         phone: sanitizeText(input.phone),
         email: sanitizeText(input.email),
         source: input.source ?? "landing",
       };
-      await db.insert(leads).values(sanitized);
+
+      await (db as any).insert(s.leads).values(sanitized);
+
       // Notify owner
       await notifyOwner({
         title: "Nuevo lead recibido",
         content: `Nombre: ${sanitized.name}\nTeléfono: ${sanitized.phone}\nCorreo: ${sanitized.email}`,
-      }).catch(() => {});
+      }).catch(() => { });
       return { success: true };
     }),
 
   list: adminProcedure.query(async () => {
     const db = await getDb();
-    if (!db) return [];
-    return db.select().from(leads).orderBy(desc(leads.createdAt));
+    const s = getSchema();
+    return (db as any).select().from(s.leads).orderBy(desc(s.leads.createdAt));
   }),
 });
 
@@ -94,7 +97,8 @@ const eventsRouter = router({
     )
     .mutation(async ({ input }) => {
       const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const s = getSchema();
+      const mode = getDbMode();
 
       // Price calculation
       const basePrice = input.packageType === "premium" ? 7500 : 5500;
@@ -112,7 +116,7 @@ const eventsRouter = router({
         name: sanitizeText(input.name),
         phone: sanitizeText(input.phone),
         email: sanitizeText(input.email),
-        eventDate: new Date(input.eventDate),
+        eventDate: mode === "sqlite" ? input.eventDate : new Date(input.eventDate),
         eventType: input.eventType,
         hours: input.hours,
         people: input.people,
@@ -126,28 +130,43 @@ const eventsRouter = router({
         notes: input.notes ? sanitizeText(input.notes) : null,
       };
 
-      const [result] = await db.insert(eventBookings).values(sanitized).$returningId();
-      const bookingId = result.id;
+      if (mode === "sqlite") {
+        const result = (db as any).insert(s.eventBookings).values(sanitized).returning({ id: s.eventBookings.id }).get();
+        const bookingId = result.id;
 
-      // Notify owner
-      await notifyOwner({
-        title: "Nueva solicitud de evento",
-        content: `Cliente: ${sanitized.name}\nFecha: ${sanitized.eventDate.toLocaleDateString("es-MX")}\nPaquete: ${sanitized.packageType.toUpperCase()}\nPersonas: ${sanitized.people}\nTotal estimado: $${totalPrice.toLocaleString("es-MX")}`,
-      }).catch(() => {});
+        await notifyOwner({
+          title: "Nueva solicitud de evento",
+          content: `Cliente: ${sanitized.name}\nFecha: ${input.eventDate}\nPaquete: ${sanitized.packageType.toUpperCase()}\nPersonas: ${sanitized.people}\nTotal estimado: $${totalPrice.toLocaleString("es-MX")}`,
+        }).catch(() => { });
 
-      return { success: true, bookingId, totalPrice, depositAmount: 1500 };
+        return { success: true, bookingId, totalPrice, depositAmount: 1500 };
+      } else {
+        const [result] = await (db as any).insert(s.eventBookings).values(sanitized).$returningId();
+        const bookingId = result.id;
+
+        await notifyOwner({
+          title: "Nueva solicitud de evento",
+          content: `Cliente: ${sanitized.name}\nFecha: ${(sanitized.eventDate as Date).toLocaleDateString("es-MX")}\nPaquete: ${sanitized.packageType.toUpperCase()}\nPersonas: ${sanitized.people}\nTotal estimado: $${totalPrice.toLocaleString("es-MX")}`,
+        }).catch(() => { });
+
+        return { success: true, bookingId, totalPrice, depositAmount: 1500 };
+      }
     }),
 
   list: adminProcedure.query(async () => {
     const db = await getDb();
-    if (!db) return [];
-    return db.select().from(eventBookings).orderBy(desc(eventBookings.createdAt));
+    const s = getSchema();
+    return (db as any).select().from(s.eventBookings).orderBy(desc(s.eventBookings.createdAt));
   }),
 
   getById: publicProcedure.input(z.object({ id: z.number() })).query(async ({ input }) => {
     const db = await getDb();
-    if (!db) return null;
-    const result = await db.select().from(eventBookings).where(eq(eventBookings.id, input.id)).limit(1);
+    const s = getSchema();
+    const mode = getDbMode();
+    if (mode === "sqlite") {
+      return (db as any).select().from(s.eventBookings).where(eq(s.eventBookings.id, input.id)).limit(1).get() ?? null;
+    }
+    const result = await (db as any).select().from(s.eventBookings).where(eq(s.eventBookings.id, input.id)).limit(1);
     return result[0] ?? null;
   }),
 
@@ -155,23 +174,35 @@ const eventsRouter = router({
     .input(z.object({ id: z.number(), status: z.enum(["pending", "confirmed", "cancelled"]) }))
     .mutation(async ({ input }) => {
       const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-      await db.update(eventBookings).set({ status: input.status }).where(eq(eventBookings.id, input.id));
+      const s = getSchema();
+      await (db as any).update(s.eventBookings).set({ status: input.status }).where(eq(s.eventBookings.id, input.id));
       return { success: true };
     }),
 
   getBlockedDates: publicProcedure.query(async () => {
     const db = await getDb();
-    if (!db) return [];
-    return db.select().from(blockedDates);
+    const s = getSchema();
+    return (db as any).select().from(s.blockedDates);
   }),
 
   blockDate: adminProcedure
     .input(z.object({ date: z.string(), reason: z.string().optional() }))
     .mutation(async ({ input }) => {
       const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-      await db.insert(blockedDates).values({ date: input.date, reason: input.reason }).onDuplicateKeyUpdate({ set: { reason: input.reason } });
+      const s = getSchema();
+      const mode = getDbMode();
+
+      if (mode === "sqlite") {
+        // SQLite: INSERT OR REPLACE
+        const existing = (db as any).select().from(s.blockedDates).where(eq(s.blockedDates.date, input.date)).limit(1).get();
+        if (existing) {
+          (db as any).update(s.blockedDates).set({ reason: input.reason }).where(eq(s.blockedDates.date, input.date)).run();
+        } else {
+          (db as any).insert(s.blockedDates).values({ date: input.date, reason: input.reason }).run();
+        }
+      } else {
+        await (db as any).insert(s.blockedDates).values({ date: input.date, reason: input.reason }).onDuplicateKeyUpdate({ set: { reason: input.reason } });
+      }
       return { success: true };
     }),
 });
@@ -187,20 +218,35 @@ const productsRouter = router({
     )
     .query(async ({ input }) => {
       const db = await getDb();
-      if (!db) return [];
-      const conditions = [eq(products.active, true)];
-      if (input?.category) conditions.push(eq(products.category, input.category));
-      return db
+      const s = getSchema();
+      const conditions = [eq(s.products.active, true)];
+      if (input?.category) conditions.push(eq(s.products.category, input.category) as any);
+      return (db as any)
         .select()
-        .from(products)
+        .from(s.products)
         .where(and(...conditions))
-        .orderBy(desc(products.createdAt));
+        .orderBy(desc(s.products.createdAt));
     }),
 
   getBySlug: publicProcedure.input(z.object({ slug: z.string() })).query(async ({ input }) => {
     const db = await getDb();
-    if (!db) return null;
-    const result = await db.select().from(products).where(eq(products.slug, input.slug)).limit(1);
+    const s = getSchema();
+    const mode = getDbMode();
+    if (mode === "sqlite") {
+      return (db as any).select().from(s.products).where(eq(s.products.slug, input.slug)).limit(1).get() ?? null;
+    }
+    const result = await (db as any).select().from(s.products).where(eq(s.products.slug, input.slug)).limit(1);
+    return result[0] ?? null;
+  }),
+
+  getById: publicProcedure.input(z.object({ id: z.number() })).query(async ({ input }) => {
+    const db = await getDb();
+    const s = getSchema();
+    const mode = getDbMode();
+    if (mode === "sqlite") {
+      return (db as any).select().from(s.products).where(eq(s.products.id, input.id)).limit(1).get() ?? null;
+    }
+    const result = await (db as any).select().from(s.products).where(eq(s.products.id, input.id)).limit(1);
     return result[0] ?? null;
   }),
 
@@ -227,9 +273,9 @@ const productsRouter = router({
     )
     .mutation(async ({ input }) => {
       const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const s = getSchema();
       const slug = slugify(input.name, { lower: true, strict: true });
-      await db.insert(products).values({
+      await (db as any).insert(s.products).values({
         name: sanitizeText(input.name),
         slug,
         category: input.category,
@@ -270,19 +316,19 @@ const productsRouter = router({
     )
     .mutation(async ({ input }) => {
       const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const s = getSchema();
       const { id, price, ...rest } = input;
       const updateData: Record<string, unknown> = { ...rest };
       if (price !== undefined) updateData.price = price.toString();
       if (rest.name) updateData.name = sanitizeText(rest.name);
-      await db.update(products).set(updateData).where(eq(products.id, id));
+      await (db as any).update(s.products).set(updateData).where(eq(s.products.id, id));
       return { success: true };
     }),
 
   delete: adminProcedure.input(z.object({ id: z.number() })).mutation(async ({ input }) => {
     const db = await getDb();
-    if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-    await db.update(products).set({ active: false }).where(eq(products.id, input.id));
+    const s = getSchema();
+    await (db as any).update(s.products).set({ active: false }).where(eq(s.products.id, input.id));
     return { success: true };
   }),
 });
@@ -305,14 +351,23 @@ const ordersRouter = router({
     )
     .mutation(async ({ input }) => {
       const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-      const [result] = await db.insert(orders).values({
+      const s = getSchema();
+      const mode = getDbMode();
+      const sanitized = {
         ...input,
         amount: input.amount.toString(),
         buyerName: sanitizeText(input.buyerName),
         buyerEmail: sanitizeText(input.buyerEmail),
-      }).$returningId();
-      return { success: true, orderId: result.id };
+        buyerPhone: input.buyerPhone ? sanitizeText(input.buyerPhone) : null,
+      };
+
+      if (mode === "sqlite") {
+        const result = (db as any).insert(s.orders).values(sanitized).returning({ id: s.orders.id }).get();
+        return { success: true, orderId: result.id };
+      } else {
+        const [result] = await (db as any).insert(s.orders).values(sanitized).$returningId();
+        return { success: true, orderId: result.id };
+      }
     }),
 
   updatePayment: publicProcedure
@@ -325,18 +380,28 @@ const ordersRouter = router({
     )
     .mutation(async ({ input }) => {
       const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-      await db.update(orders).set({
+      const s = getSchema();
+      const mode = getDbMode();
+
+      await (db as any).update(s.orders).set({
         paymentId: input.paymentId,
         paymentStatus: input.paymentStatus,
-      }).where(eq(orders.id, input.orderId));
+      }).where(eq(s.orders.id, input.orderId));
 
       // If event deposit approved, mark booking as confirmed
       if (input.paymentStatus === "approved") {
-        const order = await db.select().from(orders).where(eq(orders.id, input.orderId)).limit(1);
-        if (order[0]?.orderType === "event_deposit" && order[0].eventBookingId) {
-          await db.update(eventBookings).set({ depositPaid: true, status: "confirmed" })
-            .where(eq(eventBookings.id, order[0].eventBookingId));
+        if (mode === "sqlite") {
+          const order = (db as any).select().from(s.orders).where(eq(s.orders.id, input.orderId)).limit(1).get();
+          if (order?.orderType === "event_deposit" && order.eventBookingId) {
+            (db as any).update(s.eventBookings).set({ depositPaid: true, status: "confirmed" })
+              .where(eq(s.eventBookings.id, order.eventBookingId)).run();
+          }
+        } else {
+          const order = await (db as any).select().from(s.orders).where(eq(s.orders.id, input.orderId)).limit(1);
+          if (order[0]?.orderType === "event_deposit" && order[0].eventBookingId) {
+            await (db as any).update(s.eventBookings).set({ depositPaid: true, status: "confirmed" })
+              .where(eq(s.eventBookings.id, order[0].eventBookingId));
+          }
         }
       }
       return { success: true };
@@ -344,14 +409,18 @@ const ordersRouter = router({
 
   list: adminProcedure.query(async () => {
     const db = await getDb();
-    if (!db) return [];
-    return db.select().from(orders).orderBy(desc(orders.createdAt));
+    const s = getSchema();
+    return (db as any).select().from(s.orders).orderBy(desc(s.orders.createdAt));
   }),
 
   getById: publicProcedure.input(z.object({ id: z.number() })).query(async ({ input }) => {
     const db = await getDb();
-    if (!db) return null;
-    const result = await db.select().from(orders).where(eq(orders.id, input.id)).limit(1);
+    const s = getSchema();
+    const mode = getDbMode();
+    if (mode === "sqlite") {
+      return (db as any).select().from(s.orders).where(eq(s.orders.id, input.id)).limit(1).get() ?? null;
+    }
+    const result = await (db as any).select().from(s.orders).where(eq(s.orders.id, input.id)).limit(1);
     return result[0] ?? null;
   }),
 });
@@ -362,20 +431,24 @@ const blogRouter = router({
     .input(z.object({ published: z.boolean().optional() }).optional())
     .query(async ({ input }) => {
       const db = await getDb();
-      if (!db) return [];
+      const s = getSchema();
       const conditions = [];
       if (input?.published !== undefined) {
-        conditions.push(eq(blogPosts.published, input.published));
+        conditions.push(eq(s.blogPosts.published, input.published));
       } else {
-        conditions.push(eq(blogPosts.published, true));
+        // Sin filtro: mostrar todos (para el admin)
       }
-      return db.select().from(blogPosts).where(and(...conditions)).orderBy(desc(blogPosts.publishedAt));
+      return (db as any).select().from(s.blogPosts).where(and(...conditions)).orderBy(desc(s.blogPosts.publishedAt));
     }),
 
   getBySlug: publicProcedure.input(z.object({ slug: z.string() })).query(async ({ input }) => {
     const db = await getDb();
-    if (!db) return null;
-    const result = await db.select().from(blogPosts).where(eq(blogPosts.slug, input.slug)).limit(1);
+    const s = getSchema();
+    const mode = getDbMode();
+    if (mode === "sqlite") {
+      return (db as any).select().from(s.blogPosts).where(eq(s.blogPosts.slug, input.slug)).limit(1).get() ?? null;
+    }
+    const result = await (db as any).select().from(s.blogPosts).where(eq(s.blogPosts.slug, input.slug)).limit(1);
     return result[0] ?? null;
   }),
 
@@ -386,6 +459,7 @@ const blogRouter = router({
         excerpt: z.string().max(500).optional(),
         content: z.string().min(10),
         featuredImage: z.string().url().optional().or(z.literal("")),
+        mediaUrl: z.string().url().optional().or(z.literal("")),
         images: z.array(z.string()).optional(),
         tags: z.array(z.string()).optional(),
         published: z.boolean().default(false),
@@ -395,23 +469,29 @@ const blogRouter = router({
     )
     .mutation(async ({ input, ctx }) => {
       const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const s = getSchema();
+      const mode = getDbMode();
       const slug = slugify(input.title, { lower: true, strict: true });
       const sanitizedContent = sanitizeHtml(input.content);
-      await db.insert(blogPosts).values({
+      const now = new Date().toISOString();
+
+      const newPost = {
         title: sanitizeText(input.title),
         slug,
         excerpt: input.excerpt ? sanitizeText(input.excerpt) : null,
         content: sanitizedContent,
         featuredImage: input.featuredImage || null,
+        mediaUrl: input.mediaUrl || null,
         images: input.images ?? [],
         tags: input.tags ?? [],
         published: input.published,
-        publishedAt: input.published ? new Date() : null,
+        publishedAt: input.published ? (mode === "sqlite" ? now : new Date()) : null,
         authorId: ctx.user.id,
         metaTitle: input.metaTitle ?? null,
         metaDescription: input.metaDescription ?? null,
-      });
+      };
+
+      await (db as any).insert(s.blogPosts).values(newPost);
       return { success: true };
     }),
 
@@ -423,6 +503,7 @@ const blogRouter = router({
         excerpt: z.string().max(500).optional(),
         content: z.string().min(10).optional(),
         featuredImage: z.string().url().optional().or(z.literal("")),
+        mediaUrl: z.string().url().optional().or(z.literal("")),
         images: z.array(z.string()).optional(),
         tags: z.array(z.string()).optional(),
         published: z.boolean().optional(),
@@ -432,20 +513,22 @@ const blogRouter = router({
     )
     .mutation(async ({ input }) => {
       const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const s = getSchema();
+      const mode = getDbMode();
       const { id, content, title, ...rest } = input;
       const updateData: Record<string, unknown> = { ...rest };
       if (title) updateData.title = sanitizeText(title);
       if (content) updateData.content = sanitizeHtml(content);
-      if (rest.published) updateData.publishedAt = new Date();
-      await db.update(blogPosts).set(updateData).where(eq(blogPosts.id, id));
+      if (rest.published) updateData.publishedAt = mode === "sqlite" ? new Date().toISOString() : new Date();
+
+      await (db as any).update(s.blogPosts).set(updateData).where(eq(s.blogPosts.id, id));
       return { success: true };
     }),
 
   delete: adminProcedure.input(z.object({ id: z.number() })).mutation(async ({ input }) => {
     const db = await getDb();
-    if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-    await db.delete(blogPosts).where(eq(blogPosts.id, input.id));
+    const s = getSchema();
+    await (db as any).delete(s.blogPosts).where(eq(s.blogPosts.id, input.id));
     return { success: true };
   }),
 });

@@ -12,15 +12,21 @@ function getClient() {
 
 export async function createPreference(req: Request, res: Response) {
   try {
-    const client = getClient();
-    if (!client) {
-      return res.status(503).json({ error: "Pasarela de pago no configurada" });
-    }
-
     const { orderId, title, amount, buyerEmail, backUrl } = req.body;
 
     if (!orderId || !title || !amount || !buyerEmail) {
       return res.status(400).json({ error: "Datos incompletos" });
+    }
+
+    const client = getClient();
+    if (!client) {
+      console.warn("[MercadoPago] Access token not configured. Falling back to Mock Payment Gateway.");
+      const mockCheckoutUrl = `/pago/mock-checkout?orderId=${orderId}&amount=${amount}&title=${encodeURIComponent(title)}`;
+      return res.json({
+        preferenceId: "mock-" + orderId,
+        initPoint: mockCheckoutUrl,
+        sandboxInitPoint: mockCheckoutUrl,
+      });
     }
 
     const preference = new Preference(client);

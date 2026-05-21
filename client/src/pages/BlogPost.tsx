@@ -5,6 +5,26 @@ import { trpc } from "@/lib/trpc";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 
+function renderMedia(url: string) {
+  if (url.includes("youtube.com") || url.includes("youtu.be")) {
+    const videoId = url.includes("v=") ? url.split("v=")[1]?.split("&")[0] : url.split("youtu.be/")[1]?.split("?")[0];
+    return <iframe className="w-full aspect-video rounded-2xl border border-[oklch(18%_0.006_240)] shadow-lg" src={`https://www.youtube.com/embed/${videoId}`} allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen />;
+  }
+  if (url.includes("spotify.com")) {
+    const embedUrl = url.replace("spotify.com/", "spotify.com/embed/");
+    return <iframe className="w-full h-[152px] rounded-2xl shadow-lg" src={embedUrl} allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" />;
+  }
+  if (url.includes("soundcloud.com")) {
+    return <iframe className="w-full h-[166px] rounded-2xl shadow-lg" scrolling="no" frameBorder="no" allow="autoplay" src={`https://w.soundcloud.com/player/?url=${encodeURIComponent(url)}&color=%23d4af37&auto_play=false&hide_related=false&show_comments=true&show_user=true&show_reposts=false&show_teaser=true`} />;
+  }
+  // Fallback iframe or link
+  return (
+    <a href={url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-primary hover:underline font-medium">
+      Ver contenido multimedia externo
+    </a>
+  );
+}
+
 export default function BlogPost({ params }: { params: { slug: string } }) {
   const [, navigate] = useLocation();
   const { data: post, isLoading } = trpc.blog.getBySlug.useQuery({ slug: params.slug });
@@ -28,6 +48,10 @@ export default function BlogPost({ params }: { params: { slug: string } }) {
     );
   }
 
+  // Format content to respect line breaks if it doesn't have block HTML tags
+  const hasHtml = /<[a-z][\s\S]*>/i.test(post.content);
+  const formattedContent = hasHtml ? post.content : post.content.replace(/\n/g, '<br />');
+
   return (
     <div className="min-h-screen bg-[oklch(4.5%_0.002_240)]">
       <Navbar />
@@ -41,14 +65,20 @@ export default function BlogPost({ params }: { params: { slug: string } }) {
             Volver al blog
           </button>
 
-          {/* Featured image */}
-          {post.featuredImage && (
+          {/* Featured media */}
+          {(post.mediaUrl || post.featuredImage) && (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="aspect-video rounded-2xl overflow-hidden mb-8"
+              className="mb-8"
             >
-              <img src={post.featuredImage} alt={post.title} className="w-full h-full object-cover" />
+              {post.mediaUrl ? (
+                renderMedia(post.mediaUrl)
+              ) : (
+                <div className="aspect-video rounded-2xl overflow-hidden shadow-lg border border-[oklch(18%_0.006_240)]">
+                  <img src={post.featuredImage!} alt={post.title} className="w-full h-full object-cover" />
+                </div>
+              )}
             </motion.div>
           )}
 
@@ -92,7 +122,7 @@ export default function BlogPost({ params }: { params: { slug: string } }) {
               prose-img:rounded-xl prose-img:border prose-img:border-[oklch(18%_0.006_240)]
               prose-blockquote:border-primary prose-blockquote:text-[oklch(60%_0.01_240)]
               prose-code:text-primary prose-code:bg-[oklch(10%_0.004_240)] prose-code:px-1 prose-code:rounded"
-            dangerouslySetInnerHTML={{ __html: post.content }}
+            dangerouslySetInnerHTML={{ __html: formattedContent }}
           />
         </div>
       </main>

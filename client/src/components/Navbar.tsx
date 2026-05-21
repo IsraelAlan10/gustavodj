@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 const navLinks = [
   { href: "#servicios", label: "Servicios" },
   { href: "#precios", label: "Precios" },
-  { href: "#catalogo", label: "Catálogo" },
+  { href: "/tienda", label: "Tienda" },
   { href: "#faqs", label: "FAQs" },
   { href: "/blog", label: "Blog" },
 ];
@@ -14,7 +14,7 @@ const navLinks = [
 export default function Navbar() {
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
-  const [location] = useLocation();
+  const [location, setLocation] = useLocation();
 
   useEffect(() => {
     const handler = () => setScrolled(window.scrollY > 40);
@@ -56,7 +56,7 @@ export default function Navbar() {
         </Link>
 
         {/* Desktop links */}
-        <ul className="hidden md:flex items-center gap-8">
+        <ul className="hidden md:flex items-center gap-8 absolute left-1/2 -translate-x-1/2">
           {navLinks.map((link) => (
             <li key={link.href}>
               {link.href.startsWith("#") ? (
@@ -67,12 +67,17 @@ export default function Navbar() {
                   {link.label}
                 </button>
               ) : (
-                <Link
+                <a
                   href={link.href}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    setLocation(link.href);
+                    window.scrollTo(0, 0);
+                  }}
                   className="text-sm font-medium text-[oklch(75%_0.01_240)] hover:text-primary transition-colors duration-200 tracking-wide uppercase"
                 >
                   {link.label}
-                </Link>
+                </a>
               )}
             </li>
           ))}
@@ -120,13 +125,18 @@ export default function Navbar() {
                       {link.label}
                     </button>
                   ) : (
-                    <Link
+                    <a
                       href={link.href}
-                      onClick={() => setOpen(false)}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        setOpen(false);
+                        setLocation(link.href);
+                        window.scrollTo(0, 0);
+                      }}
                       className="block text-base font-medium text-[oklch(85%_0.01_80)] hover:text-primary transition-colors py-1"
                     >
                       {link.label}
-                    </Link>
+                    </a>
                   )}
                 </li>
               ))}

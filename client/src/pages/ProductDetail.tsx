@@ -26,8 +26,8 @@ export default function ProductDetail({ params }: { params: { slug: string } }) 
     return (
       <div className="min-h-screen bg-[oklch(4.5%_0.002_240)] flex flex-col items-center justify-center gap-4">
         <p className="text-[oklch(55%_0.01_240)]">Producto no encontrado.</p>
-        <Link href="/catalogo" className="text-primary hover:underline text-sm">
-          Volver al catálogo
+        <Link href="/tienda" className="text-primary hover:underline text-sm">
+          Volver a la tienda
         </Link>
       </div>
     );
@@ -44,11 +44,11 @@ export default function ProductDetail({ params }: { params: { slug: string } }) 
         <div className="container">
           {/* Breadcrumb */}
           <button
-            onClick={() => navigate("/catalogo")}
+            onClick={() => navigate("/tienda")}
             className="flex items-center gap-2 text-sm text-[oklch(55%_0.01_240)] hover:text-primary transition-colors mb-8"
           >
             <ArrowLeft className="w-4 h-4" />
-            Volver al catálogo
+            Volver a la tienda
           </button>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">

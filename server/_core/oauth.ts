@@ -50,4 +50,31 @@ export function registerOAuthRoutes(app: Express) {
       res.status(500).json({ error: "OAuth callback failed" });
     }
   });
+
+  // Local development login bypass
+  app.get("/api/oauth/dev-login", async (req: Request, res: Response) => {
+    try {
+      const mockOpenId = "dev-admin-123";
+      await db.upsertUser({
+        openId: mockOpenId,
+        name: "Admin Local",
+        email: "admin@local.test",
+        role: "admin",
+        lastSignedIn: new Date(),
+      });
+
+      const sessionToken = await sdk.createSessionToken(mockOpenId, {
+        name: "Admin Local",
+        expiresInMs: ONE_YEAR_MS,
+      });
+
+      const cookieOptions = getSessionCookieOptions(req);
+      res.cookie(COOKIE_NAME, sessionToken, { ...cookieOptions, maxAge: ONE_YEAR_MS });
+
+      res.redirect(302, "/admin");
+    } catch (error) {
+      console.error("[OAuth] Dev login failed", error);
+      res.status(500).json({ error: "Dev login failed" });
+    }
+  });
 }

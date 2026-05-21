@@ -11,18 +11,20 @@ import ProductDetail from "./pages/ProductDetail";
 import Blog from "./pages/Blog";
 import BlogPost from "./pages/BlogPost";
 import Admin from "./pages/Admin";
-import { EventPayment, PaymentSuccess, PaymentFailure, PaymentPending } from "./pages/Payment";
+import { EventPayment, ProductPayment, MockCheckout, PaymentSuccess, PaymentFailure, PaymentPending } from "./pages/Payment";
 
 function Router() {
   return (
     <Switch>
       <Route path="/" component={Home} />
-      <Route path="/catalogo" component={Catalog} />
+      <Route path="/tienda" component={Catalog} />
       <Route path="/producto/:slug" component={ProductDetail} />
       <Route path="/blog" component={Blog} />
       <Route path="/blog/:slug" component={BlogPost} />
       <Route path="/admin" component={Admin} />
       <Route path="/pago/evento/:bookingId" component={EventPayment} />
+      <Route path="/pago/producto/:productId" component={ProductPayment} />
+      <Route path="/pago/mock-checkout" component={MockCheckout} />
       <Route path="/pago/exitoso" component={PaymentSuccess} />
       <Route path="/pago/fallido" component={PaymentFailure} />
       <Route path="/pago/pendiente" component={PaymentPending} />

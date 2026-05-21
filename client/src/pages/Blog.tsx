@@ -1,12 +1,12 @@
 import { motion } from "framer-motion";
 import { Link } from "wouter";
-import { Calendar, Tag } from "lucide-react";
+import { Calendar, Tag, Play } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 
 export default function Blog() {
-  const { data: posts, isLoading } = trpc.blog.list.useQuery();
+  const { data: posts, isLoading } = trpc.blog.list.useQuery({ published: true });
 
   return (
     <div className="min-h-screen bg-[oklch(4.5%_0.002_240)]">
@@ -66,12 +66,25 @@ export default function Blog() {
                   className="card-hover group rounded-2xl bg-[oklch(7%_0.003_240)] border border-[oklch(18%_0.006_240)] overflow-hidden flex flex-col"
                 >
                   {post.featuredImage ? (
-                    <div className="aspect-video overflow-hidden">
+                    <div className="aspect-video overflow-hidden relative">
                       <img
                         src={post.featuredImage}
                         alt={post.title}
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                       />
+                      {post.mediaUrl && (
+                        <div className="absolute inset-0 flex items-center justify-center bg-black/20 group-hover:bg-black/10 transition-colors">
+                          <div className="w-12 h-12 rounded-full bg-black/50 backdrop-blur-md flex items-center justify-center border border-white/20">
+                            <Play className="w-5 h-5 text-white ml-1" />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ) : post.mediaUrl ? (
+                    <div className="aspect-video bg-[oklch(10%_0.004_240)] flex items-center justify-center relative overflow-hidden group-hover:bg-[oklch(12%_0.004_240)] transition-colors">
+                      <div className="w-12 h-12 rounded-full bg-black/50 backdrop-blur-md flex items-center justify-center border border-white/20">
+                        <Play className="w-5 h-5 text-white ml-1" />
+                      </div>
                     </div>
                   ) : (
                     <div className="aspect-video bg-[oklch(10%_0.004_240)] flex items-center justify-center">
