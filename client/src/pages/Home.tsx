@@ -9,6 +9,7 @@ import LeadFormSection from "@/components/sections/LeadFormSection";
 import BookingFormSection from "@/components/sections/BookingFormSection";
 import FAQSection from "@/components/sections/FAQSection";
 import ReviewsSection from "@/components/sections/ReviewsSection";
+import GallerySection from "@/components/sections/GallerySection";
 
 export default function Home() {
   return (
@@ -31,6 +32,7 @@ export default function Home() {
           <CTASection />
           <BookingFormSection />
           <LeadFormSection />
+          <GallerySection />
           <ReviewsSection />
           <FAQSection />
         </main>

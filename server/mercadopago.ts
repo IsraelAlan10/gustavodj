@@ -47,7 +47,7 @@ export async function createPreference(req: Request, res: Response) {
           failure: `${backUrl}/pago/fallido?orderId=${orderId}`,
           pending: `${backUrl}/pago/pendiente?orderId=${orderId}`,
         },
-        auto_return: "approved",
+        auto_return: undefined,
         external_reference: String(orderId),
         notification_url: `${process.env.VITE_FRONTEND_FORGE_API_URL ?? ""}/api/mp/webhook`,
       },
